@@ -1,0 +1,50 @@
+---
+# site.yml - Multi-play Ansible playbook for static web deployment
+
+# --- Play 1: Prepare Web Servers ---
+- name: Prepare web servers
+  hosts: web
+  become: yes
+  tasks:
+    - name: Ensure nginx is installed
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Ensure nginx is running and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+# --- Play 2: Deploy Static Content ---
+- name: Deploy static website content
+  hosts: web
+  become: yes
+  tasks:
+    - name: Copy index.html to nginx web root
+      copy:
+        src: files/index.html
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+# --- Play 3: Verify Deployment ---
+- name: Verify site content
+  hosts: localhost
+  vars:
+    web_servers: "{{ groups['web'] }}"
+  tasks:
+    - name: Check web page availability
+      uri:
+        url: "http://{{ item }}"
+        return_content: yes
+      loop: "{{ web_servers }}"
+      register: web_results
+
+    - name: Print page titles
+      debug:
+  #      msg: "Web {{ item.item }} responded with: {{ item.content | regex_search('title>(.*?)</title>', '\\1') }}"
+      loop: "{{ web_results.results }}"
