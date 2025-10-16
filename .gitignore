@@ -1,0 +1,15 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfstate.d/
+*.tfvars
+*.backup
+crash.log
+
+# Ansible
+*.retry
+
+# General
+*.log
+
