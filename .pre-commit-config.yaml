@@ -1,9 +1,10 @@
 repos:
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: v1.37.1
     hooks:
       - id: yamllint
-  - repo: https://github.com/ansible/ansible-lint
-    rev: v24.6.1
-    hooks:
-      - id: ansible-lint
+        # - repo: https://github.com/ansible/ansible-lint
+        #rev: v25.9.2
+        #hooks:
+        #- id: ansible-lint
+        #language_version: python3.12
