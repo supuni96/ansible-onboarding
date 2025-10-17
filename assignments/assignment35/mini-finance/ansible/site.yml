@@ -1,0 +1,49 @@
+---
+# site.yml - Multi-play Ansible playbook for mini-finance website (Assignment 36)
+
+- name: Prepare web servers
+  hosts: web
+  become: yes
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+- name: Deploy static website (HTML + CSS + other assets)
+  hosts: web
+  become: yes
+  tasks:
+    - name: Copy all website files from local files/ to nginx root
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/files/"
+        dest: /var/www/html/
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+
+- name: Verify website
+  hosts: web
+  tasks:
+    - name: Check HTTP response from site
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}"
+        return_content: yes
+        status_code: 200
+      register: result
+
+    - name: Show homepage content snippet
+      ansible.builtin.debug:
+        msg: "{{ result.content | truncate(200) }}"
