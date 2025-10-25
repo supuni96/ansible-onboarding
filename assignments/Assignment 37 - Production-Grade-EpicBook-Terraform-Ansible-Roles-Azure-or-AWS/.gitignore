@@ -1,0 +1,14 @@
+# Node
+node_modules/
+*.log
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars   # if you have sensitive values
+
+# Ansible
+*.retry
+*.vault
+

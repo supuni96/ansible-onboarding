@@ -1,0 +1,20 @@
+---
+- name: Install curl and build-essential
+  apt:
+    name:
+      - curl
+      - build-essential
+    state: present
+
+- name: Download and install NVM
+  shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+  args:
+    creates: /home/azureuser/.nvm/nvm.sh
+
+- name: Load NVM and install Node.js v17
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    source $NVM_DIR/nvm.sh
+    nvm install 17
+  args:
+    executable: /bin/bash

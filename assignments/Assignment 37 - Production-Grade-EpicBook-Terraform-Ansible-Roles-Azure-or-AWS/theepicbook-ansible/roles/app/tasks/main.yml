@@ -1,0 +1,36 @@
+---
+- name: Install Git
+  apt:
+    name: git
+    state: present
+
+- name: Clone EpicBook repository
+  git:
+    repo: "https://github.com/pravinmishraaws/theepicbook"
+    dest: /opt/theepicbook
+    force: yes
+
+- name: Install npm dependencies
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    source $NVM_DIR/nvm.sh
+    cd /opt/theepicbook
+    npm install
+  args:
+    executable: /bin/bash
+
+- name: Create EpicBook database
+  mysql_db:
+    name: bookstore
+    state: present
+    login_user: epicadmin
+    login_password: "{{ mysql_admin_password }}"
+    login_host: localhost
+
+- name: Import DB schema using epicadmin
+  shell: |
+    sudo mysql -u epicadmin -p'{{ mysql_admin_password }}' < /opt/theepicbook/db/BuyTheBook_Schema.sql
+    sudo mysql -u epicadmin -p'{{ mysql_admin_password }}' < /opt/theepicbook/db/author_seed.sql
+    sudo mysql -u epicadmin -p'{{ mysql_admin_password }}' < /opt/theepicbook/db/books_seed.sql
+  args:
+    executable: /bin/bash

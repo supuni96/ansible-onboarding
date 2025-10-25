@@ -1,0 +1,339 @@
+Steps I followed and Challenges I faced
+
+
+Assignment: Deploy EpicBook Application on Azure VM using Terraform & Ansible
+-----------------------------------------------------------------------------------------
+1. Provision Infrastructure using Terraform
+
+Steps:
+
+Created a Terraform configuration for an Azure VM.
+
+Defined security group rules (prod-epicbook-allow-http) to allow HTTP (port 80) and custom port 8080.
+
+Ran:
+
+terraform init
+terraform plan
+terraform apply
+Terraform Commands with tfvars
+
+Initialize Terraform
+
+terraform init
+
+
+Plan with .tfvars
+
+terraform plan -var-file="terraform.tfvars"
+
+
+Apply with .tfvars
+
+terraform apply -var-file="terraform.tfvars"
+
+
+Check outputs
+
+terraform output
+
+
+Destroy resources (optional)
+
+terraform destroy -var-file="terraform.tfvars"
+
+Output included the VM public IP (e.g., 4.194.130.196).
+
+Errors / Fixes:
+
+Issue: Forgot how to retrieve Terraform outputs again.
+
+Fix: Used:
+
+terraform output
+
+
+------------------------------------------------------------
+2. Configure VM & Install Dependencies using Ansible
+
+Steps:
+
+Prepared Ansible inventory: inventory/prod.ini with Azure VM IP.
+
+Created roles: mysql, nodejs, nginx, app.
+
+Created playbooks/site.yml to apply roles on the VM.
+
+Ran Ansible playbook:
+
+ansible-playbook -i inventory/prod.ini playbooks/site.yml -v
+-------------------------------------------------------------------------
+Errors / Fixes:
+
+Error 1: Playbook not found.
+
+Fix: Correct path to site.yml under playbooks/ directory.
+
+Error 2: Role ‘mysql’ not found.
+
+Fix: Ensured roles/ directory exists in the project root with subfolders mysql, nodejs, nginx, app. Run playbook from correct folder:
+
+cd playbooks
+ansible-playbook -i ../inventory/prod.ini site.yml -v
+
+
+Error 3: No inventory parsed.
+
+Fix: Specified inventory file explicitly with -i ../inventory/prod.ini.
+
+3. Node.js Application Deployment
+
+Steps:
+
+Copied EpicBook code to /opt/theepicbook on VM.
+
+Installed Node.js dependencies:
+
+npm install
+
+
+Configured database connection in server.js (host = VM IP or localhost, user/password for MySQL).
+
+Started Node.js app using systemd:
+
+sudo systemctl start epicbook
+sudo systemctl enable epicbook
+sudo systemctl status epicbook
+
+
+Errors / Fixes:
+
+Error 1: SequelizeConnectionError: Access denied for user 'root'@'localhost'.
+
+Fix: Created MySQL user with privileges for Azure user instead of root, updated server.js to use correct user/password.
+
+Error 2: EADDRINUSE: address already in use :::8080.
+
+Fix: Killed previous Node.js process:
+
+sudo kill -9 <PID>
+sudo systemctl restart epicbook
+
+
+Error 3: App not reachable via public IP.
+
+Fix: Opened firewall rules in VM (UFW/iptables) and Azure NSG to allow TCP 8080:
+
+sudo ufw allow 8080/tcp
+sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+
+4. Testing Application
+
+Checked locally:
+
+curl http://localhost:8080
+
+
+Checked externally via browser:
+
+Initially ERR_CONNECTION_TIMED_OUT.
+
+Fixed by opening firewall & NSG ports (as above).
+
+Browser returned 200 OK and EpicBook home page loaded.
+
+5. Summary of Challenges & Fixes
+Challenge	Error / Symptom	Resolution
+Database access	SequelizeConnectionError: Access denied for user 'root'@'localhost'	Created MySQL user with privileges, updated server.js connection
+Port already in use	EADDRINUSE: address already in use :::8080	Killed previous Node.js process, restarted service
+App unreachable externally	ERR_CONNECTION_TIMED_OUT	Opened port 8080 in UFW and Azure NSG
+Ansible roles not found	role 'mysql' was not found	Ensured roles/ directory exists and playbook run from correct folder
+Playbook not found	[ERROR]: the playbook: playbook.yml could not be found	Used correct path (playbooks/site.yml)
+6. Security Observations
+
+MySQL root user initially exposed.
+
+Node.js app running without HTTPS.
+
+Plans for production:
+
+Create dedicated database user with strong password.
+
+Configure SSL/TLS for Node.js (HTTPS) with reverse proxy (NGINX).
+
+Close unused ports.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Steps to Deploy EpicBook on Ubuntu
+1️⃣ Provision the Ubuntu VM (Azure)
+
+Create an Ubuntu VM in Azure (e.g., prod-epicbook-vm) with at least 2GB RAM.
+
+Use the default azureuser or your own user.
+
+Allow HTTP (80), HTTPS (443), and custom port 8080 in the NSG (Network Security Group).
+
+SSH into VM:
+
+ssh azureuser@<VM_PUBLIC_IP>
+
+2️⃣ Update the VM
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt install git curl wget -y
+
+3️⃣ Install Required Software
+Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install nodejs -y
+node -v
+npm -v
+
+MySQL
+sudo apt install mysql-server -y
+sudo systemctl start mysql
+sudo systemctl enable mysql
+sudo mysql_secure_installation
+
+
+Create database and user for EpicBook:
+
+CREATE DATABASE bookstore;
+CREATE USER 'epicbook_user'@'%' IDENTIFIED BY 'StrongPassword123!';
+GRANT ALL PRIVILEGES ON bookstore.* TO 'epicbook_user'@'%';
+FLUSH PRIVILEGES;
+
+4️⃣ Clone the EpicBook Code
+cd /opt
+sudo git clone <repo_url> theepicbook
+cd theepicbook
+
+5️⃣ Install Node.js Dependencies
+npm install
+
+
+Make sure server.js and models folder exist.
+
+Check package.json for dependencies.
+
+6️⃣ Configure Database Connection
+
+Edit config/config.json or .env file (depending on your setup) to match MySQL credentials:
+
+{
+  "username": "epicbook_user",
+  "password": "StrongPassword123!",
+  "database": "bookstore",
+  "host": "localhost",
+  "dialect": "mysql"
+}
+
+7️⃣ Run Node.js Server (Test)
+node server.js
+
+
+Error encountered: EADDRINUSE: address already in use :::8080
+
+Solution: Kill the existing process using port 8080:
+
+sudo lsof -i :8080
+sudo kill -9 <PID>
+
+
+Restart server:
+
+node server.js
+
+
+Confirm working locally:
+
+curl http://localhost:8080
+
+8️⃣ Configure Firewall
+
+Ubuntu ufw is inactive by default. Enable rules:
+
+sudo ufw allow 8080/tcp
+sudo ufw allow 80/tcp
+sudo ufw enable
+sudo ufw status
+
+
+Or use iptables:
+
+sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+
+9️⃣ Check Azure NSG
+
+Make sure NSG allows TCP 8080/80 from Internet.
+
+Example rule for 8080:
+
+Name	Port	Protocol	Source	Action
+prod-epicbook-allow-http	8080	TCP	Any	Allow
+🔟 Access the Site
+
+From your local browser:
+
+http://<VM_PUBLIC_IP>:8080
+
+
+If using nginx later, you can proxy 80 → 8080.
+
+1️⃣1️⃣ Setup Node.js as System Service (Optional)
+
+Create systemd service /etc/systemd/system/epicbook.service:
+
+[Unit]
+Description=EpicBook Node.js App
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/theepicbook/server.js
+WorkingDirectory=/opt/theepicbook
+Restart=always
+User=azureuser
+Environment=PORT=8080
+
+[Install]
+WantedBy=multi-user.target
+
+
+Start and enable:
+
+sudo systemctl daemon-reload
+sudo systemctl start epicbook
+sudo systemctl enable epicbook
+sudo systemctl status epicbook
+
+1️⃣2️⃣ Deploy with Ansible (Optional / Recommended)
+
+Inventory: inventory/prod.ini (contains your VM IP).
+
+Playbook: playbooks/site.yml.
+
+Roles: mysql, nodejs, nginx, app.
+
+Run playbook:
+
+ansible-playbook -i inventory/prod.ini playbooks/site.yml -v
+
+
+Errors & Fixes:
+
+role 'mysql' not found → Ensure roles are in roles/ folder relative to playbook.
+
+Inventory missing → Provide -i inventory/prod.ini.
+
+Firewall / port blocked → Open port 8080 in NSG & ufw.
+
+✅ Key Observations / Security Notes
+
+MySQL: Remote access using % is not secure; restrict to internal IPs or use VPN.
+
+Node.js: Run behind nginx with SSL for production.
+
+Firewall: Only open required ports (80/443/SSH).
+
+Passwords: Use Ansible Vault or environment variables instead of hardcoding.

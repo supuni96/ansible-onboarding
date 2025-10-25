@@ -1,0 +1,9 @@
+variable "rg_name" { type = string }
+variable "location" { type = string }
+variable "env" { type = string }
+variable "public_nic_id" { type = string }
+variable "public_ip" { type = string } # nic public ip provided from network module
+variable "db_host" { type = string }
+variable "vm_user" { type = string }
+variable "vm_password" { type = string }
+variable "tags" { type = map(string) }

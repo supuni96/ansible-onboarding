@@ -1,0 +1,11 @@
+---
+- name: Deploy EpicBook Application on Azure Ubuntu
+  hosts: web
+  become: yes
+  vars:
+    mysql_admin_password: "StrongPassword123!"
+  roles:
+    - mysql
+    - nodejs
+    - app
+    - nginx
