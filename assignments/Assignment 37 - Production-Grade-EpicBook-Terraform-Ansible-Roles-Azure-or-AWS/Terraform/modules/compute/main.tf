@@ -10,7 +10,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
   username   = var.vm_user
-  public_key = file("~/.ssh/id_ed25519.pub")
+  public_key = file("${path.module}/id_rsa.pub")
 }
 
 
@@ -47,3 +47,4 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   tags = var.tags
 }
+
